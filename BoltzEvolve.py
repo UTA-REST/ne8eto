@@ -22,27 +22,37 @@ class Evolver2D:
         counter=np.zeros_like(dist.f)
 
         pbins=len(dist.f.ravel())
+        arraylen=col*pbins
 
         #each of these signs is applied to a randomly generated angle,
-        # so we can draw them randomly just once at the beginning and re-use
-        randsigns2=(-1)**(np.random.randint(0,2,size=col*pbins))
-        randsigns3=(-1)**(np.random.randint(0,2,size=col*pbins))
+        randsigns2=(-1)**(np.random.randint(0,2,size=arraylen))
+        randsigns3=(-1)**(np.random.randint(0,2,size=arraylen))
 
-        normfactor=(2.*self.grid.zlim)**3*dist.VScale_SI()*self.CrossSec/(2*np.pi)
+        # Since these signs apply to random angles we don't necessarily
+        #  need them totally random. This is faster.
+        #randsigns2=(-1)+2*(np.arange(0,col*pbins,1)>int(arraylen/2))
+        #randsigns3=(-1)+2*(np.arange(0,col*pbins,1)%2==1)
 
-        p4=np.array([np.random.uniform(0,self.grid.rlim**0.5,size=col*pbins)**2, np.zeros(col*pbins),np.random.uniform(-self.grid.zlim,self.grid.zlim,size=col*pbins)]).T
+        # To understand this norm factor see Luiten, Phys Rev A 53, 1 (1995) Eq. 10
+        normfactor=(2.*self.grid.zlim)**3   *   dist.VScale_SI()  *  self.CrossSec/(2*np.pi)  *      (4.*np.pi)
+        #           [volume for p3 int]         [scaling for q/m]     [xs/2pi in prefactor]      [volume for dOmega int]
+
+        # we can pick coord system such that p4 defines x axis, WLOG.
+        # We can also optimize p4 sampling however we like,  because we divide out the samples per bin in the end.
+        #  Here we emphasize lower r values by sampling as r^0.5, since we expect our phase space disnt is more concentrated at low r.
+        p4=np.array([np.random.uniform(0,self.grid.rlim**0.5,size=arraylen)**2, np.zeros(arraylen),np.random.uniform(-self.grid.zlim,self.grid.zlim,size=arraylen)]).T
         Z4=np.array(p4[:,2]+self.grid.zlim).astype('int')
         R4=np.array(p4[:,0]).astype('int')
 
         # Generate random p3s
-        p3=np.array([np.random.uniform(-self.grid.zlim,self.grid.zlim,size=col*pbins) for i in (0,1,2)]).T
+        p3=np.array([np.random.uniform(-self.grid.zlim,self.grid.zlim,size=arraylen) for i in (0,1,2)]).T
 
         P=(p3+p4)/2                               # COM momentum/2
 
 
-        cph_out=2*np.random.random(col*pbins)-1         # random angles for 12 in c.o.m.
+        cph_out=2*np.random.random(arraylen)-1         # random angles for 12 in c.o.m.
         sph_out=(1-cph_out**2)**0.5*randsigns2
-        cth_out=2*np.random.random(col*pbins)-1
+        cth_out=2*np.random.random(arraylen)-1
         sth_out=(1-cth_out**2)**0.5*randsigns3
 
         qmag=sum((p4-p3).T**2)**0.5/2                                      # mom xfer/2  mag
