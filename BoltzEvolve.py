@@ -4,6 +4,12 @@ from random import choices, getrandbits
 from Grids import *
 
 
+#Comments for future self:
+#. dist.f should be equal to P(pr,phi) but where there is no phi dependence
+#. Thus for total number of particles at given r, P(r) = 2*pi*r*dist(f)
+#. 
+#. When dfdt is calculated, it applies to each P(pr,phi) equivalently, since p4 is an input
+
 class Evolver2D:
 
     grid=None
@@ -34,8 +40,8 @@ class Evolver2D:
         #randsigns3=(-1)+2*(np.arange(0,col*pbins,1)%2==1)
 
         # To understand this norm factor see Luiten, Phys Rev A 53, 1 (1995) Eq. 10
-        normfactor=(2.*self.grid.zlim)**3   *   dist.VScale_SI()  *  self.CrossSec/(2*np.pi)  *      (4.*np.pi)
-        #           [volume for p3 int]         [scaling for q/m]     [xs/2pi in prefactor]      [volume for dOmega int]
+        normfactor=(2.*self.grid.zlim)**3   *   dist.VScale_SI()  *  self.CrossSec/(2*np.pi)  *      (4.*np.pi)                *  (2.*np.pi)
+        #           [volume for p3 int]         [scaling for q/m]     [xs/2pi in prefactor]      [volume for dOmega int]    [converting f2D to f3D]
 
         # we can pick coord system such that p4 defines x axis, WLOG.
         # We can also optimize p4 sampling however we like,  because we divide out the samples per bin in the end.
@@ -68,11 +74,13 @@ class Evolver2D:
             if(np.abs(term1-term2)>1e-20):
                 dfdt2[Z4[i],R4[i]]+=(qmag[i])*(term1-term2)
 
-
         eps=1e-10
-        return(dfdt2 / (counter+eps) * normfactor)
+        return(dfdt2  / (counter+eps) * normfactor)
 
 
+    def GetGradP(self, f2D):
+        GradZ=f2D[2:,:]-f2D[:-2,:]
+        GradRho=f2D[:,1:]-f2D[:,:-1]
 
     # Calculate source and sink terms in Boltzmann based on dist function f
     def GetBoltzmannTerms2D(self,p1,p2,p3,p4, f2D):
@@ -97,11 +105,13 @@ class Evolver2D:
 
 
     #Thermalize an initial state distribution
-    def ThermalizeIt(self,dist, times=np.arange(0,0.002,0.0002)):
+    def ThermalizeIt(self,dist, times=np.arange(0,0.002,0.0002),verbose=False):
         fs=[]
         dfdts=[]
 
         for ti in range(0,len(times)-1):
+            if(verbose):
+                print("Starting time step "+ str(ti)+ " of " +  str(len(times)-1) )
             fs.append(copy.deepcopy(dist.f))
             dfdt=self.GetDfDtFast(dist, 500)
             StepTime=times[ti+1]-times[ti]
@@ -136,12 +146,9 @@ class Evolver2D:
         times=[0]
         energyfracovercut=[]
         particlefracovercut=[]
-        cutpos=[]
         c2=self.grid.RR2**2+self.grid.ZZ2**2
 
         for ti in range(0,timesteps):
-
-            cutpos.append(20-int(ti/2))
             CutMask=CutFunction(times[-1],self.grid)
             InvCutMask=np.ones_like(CutMask)-CutMask.astype('int')
             dist.f=dist.f*CutMask
@@ -161,7 +168,7 @@ class Evolver2D:
         ETraj=np.cumprod(1-np.array(energyfracovercut))
         PTraj=np.cumprod(1-np.array(particlefracovercut))
 
-        return fs, dfdts,times,ETraj,PTraj,cutpos
+        return fs, dfdts,times,ETraj,PTraj
 
 
 
