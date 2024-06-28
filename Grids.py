@@ -87,9 +87,9 @@ class Distribution:
 # An example distribution - this one is a sliced maxwell boltzmann.
 
 class SlicedMB2D(Distribution):
-    def __init__(self, T=10, MBPeak=80, gridpoints=30, m=3e9, RCut=100,ZCut=100,Rho=6e19,pz0=0,pr0=0):
+    def __init__(self, T=10, mkt=80, gridpoints=30, m=3e9, RCut=100,ZCut=100,Rho=6e19,pz0=0,pr0=0):
         kT=T*8.62e-5 # in eV
-        Distribution.__init__(self,pscale=np.sqrt((m*kT)/MBPeak), gridpoints=gridpoints, m=m)
-        mb2d=Rho*MaxBoltz2D(MBPeak,self.grid.RR2,self.grid.ZZ2,pz0=pz0,pr0=pr0)
+        Distribution.__init__(self,pscale=np.sqrt((m*kT)/mkt), gridpoints=gridpoints, m=m)
+        mb2d=Rho*MaxBoltz2D(mkt,self.grid.RR2,self.grid.ZZ2,pz0=pz0,pr0=pr0)
         CutMask=(self.grid.RR2<RCut)*(self.grid.ZZ2<ZCut)
         self.f=mb2d*CutMask
